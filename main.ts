@@ -45,9 +45,13 @@ export default class LastFmPlugin extends Plugin {
             callback: () => this.syncLastFm(false)
         });
 
-        this.addRibbonIcon('refresh-cw', 'Sync Trakt', () => {
-            this.syncLastFm(false);
-        });
+        try {
+            this.addRibbonIcon('sync', 'Sync Trakt', () => {
+                this.syncLastFm(false);
+            });
+        } catch (e) {
+            console.error("Last.fm: Failed to load ribbon icon", e);
+        }
 
         if (this.settings.syncOnStart) {
             this.app.workspace.onLayoutReady(() => {
@@ -57,7 +61,8 @@ export default class LastFmPlugin extends Plugin {
     }
 
     formatOffsetDate(uts: number, offsetHours: number): string {
-        const date = new Date((uts * 1000) + (offsetHours * 3600 * 1000));
+        const safeOffset = isNaN(offsetHours) ? 0 : offsetHours;
+        const date = new Date((uts * 1000) + (safeOffset * 3600 * 1000));
         return date.toISOString().replace('T', ' ').substring(0, 16);
     }
 
@@ -92,8 +97,8 @@ export default class LastFmPlugin extends Plugin {
         if (this.settings.syncArtists && limits.artists > 0) {
             new Notice("Syncing Artists...");
             try {
-                const url = `https://ws.audioscrobbler.com/2.0/?method=user.gettopartists&user=${this.settings.username}&api_key=${this.settings.apiKey}&format=json&limit=${limits.artists}`;
-                const res = await fetch(url);
+                const url = `https://ws.audioscrobbler.com/2.0/?method=user.gettopartists&user=${this.settings.username}&api_key=${this.settings.apiKey}&format=json&limit=${limits.artists}&_=${Date.now()}`;
+                const res = await fetch(url, { cache: 'no-store' });
                 const data = await res.json();
                 
                 if (data.topartists && data.topartists.artist) {
@@ -130,8 +135,8 @@ lastfm_url: "${artist.url}"
         if (this.settings.syncAlbums && limits.albums > 0) {
             new Notice("Syncing Albums...");
             try {
-                const url = `https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=${this.settings.username}&api_key=${this.settings.apiKey}&format=json&limit=${limits.albums}`;
-                const res = await fetch(url);
+                const url = `https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=${this.settings.username}&api_key=${this.settings.apiKey}&format=json&limit=${limits.albums}&_=${Date.now()}`;
+                const res = await fetch(url, { cache: 'no-store' });
                 const data = await res.json();
                 
                 if (data.topalbums && data.topalbums.album) {
@@ -170,18 +175,20 @@ lastfm_image: "${imageUrl}"
         }
 
         // Fetch Tracks
-        let trackLimit = isBackfill ? limits.tracks : 200; // Pull up to 200 tracks for regular incremental syncs
+        let trackLimit = isBackfill ? limits.tracks : 200; 
         if (trackLimit > 0) {
             new Notice("Syncing Tracks...");
             try {
                 let tracksUrl = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${this.settings.username}&api_key=${this.settings.apiKey}&extended=1&format=json&limit=${trackLimit}`;
                 
                 if (!isBackfill && this.settings.lastSync > 0) {
-                    // Add 1 second to lastSync so we don't pull the exact same track again
                     tracksUrl += `&from=${this.settings.lastSync + 1}`;
                 }
+                
+                // Cache buster
+                tracksUrl += `&_=${Date.now()}`;
 
-                const tracksRes = await fetch(tracksUrl);
+                const tracksRes = await fetch(tracksUrl, { cache: 'no-store' });
                 const tracksData = await tracksRes.json();
                 let latestSyncTime = this.settings.lastSync;
 
@@ -205,8 +212,8 @@ lastfm_image: "${imageUrl}"
                         let isLiked = (track.loved === "1");
                         
                         try {
-                            const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&user=${this.settings.username}&api_key=${this.settings.apiKey}&artist=${encodeURIComponent(artistName)}&track=${encodeURIComponent(track.name)}&format=json`;
-                            const infoRes = await fetch(infoUrl);
+                            const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&user=${this.settings.username}&api_key=${this.settings.apiKey}&artist=${encodeURIComponent(artistName)}&track=${encodeURIComponent(track.name)}&format=json&_=${Date.now()}`;
+                            const infoRes = await fetch(infoUrl, { cache: 'no-store' });
                             const infoData = await infoRes.json();
                             if (infoData.track) {
                                 playcount = parseInt(infoData.track.userplaycount, 10) || 1;
