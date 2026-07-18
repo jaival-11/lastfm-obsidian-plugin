@@ -34,7 +34,7 @@ export default class LastFmPlugin extends Plugin {
 
         new Notice("Fetching Last.fm scrobbles...");
         try {
-            const url = \`https://ws.audioscrobbler.com/2.0/?method=user.gettoptracks&user=\${this.settings.username}&api_key=\${this.settings.apiKey}&format=json&limit=50\`;
+            const url = `https://ws.audioscrobbler.com/2.0/?method=user.gettoptracks&user=${this.settings.username}&api_key=${this.settings.apiKey}&format=json&limit=50`;
             const res = await fetch(url);
             const data = await res.json();
             
@@ -51,21 +51,21 @@ export default class LastFmPlugin extends Plugin {
                 const safeTitle = track.name.replace(/[^a-zA-Z0-9 -]/g, '').trim();
                 if (!safeTitle) continue;
                 
-                const filePath = normalizePath(\`\${folderPath}/\${safeTitle}.md\`);
+                const filePath = normalizePath(`${folderPath}/${safeTitle}.md`);
                 const imageUrl = track.image[3] ? track.image[3]['#text'] : "";
                 
-                const content = \`---
-artist: "\${track.artist.name}"
-playcount: \${track.playcount}
-url: "\${track.url}"
-image: "\${imageUrl}"
+                const content = `---
+artist: "${track.artist.name}"
+playcount: ${track.playcount}
+url: "${track.url}"
+image: "${imageUrl}"
 ---
-# \${track.name}
-**Artist**: \${track.artist.name}
-**Total Plays**: \${track.playcount}
+# ${track.name}
+**Artist**: ${track.artist.name}
+**Total Plays**: ${track.playcount}
 
-![Cover Art](\${imageUrl})
-\`;
+![Cover Art](${imageUrl})
+`;
                 const file = this.app.vault.getAbstractFileByPath(filePath);
                 if (file instanceof TFile) {
                     await this.app.vault.modify(file, content);
