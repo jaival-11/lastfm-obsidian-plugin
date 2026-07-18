@@ -44,6 +44,14 @@ Seamlessly fetch scrobbles, artists, albums and cover art from Last.fm and auto 
 
 ---
 
+## Network Usage
+
+Per Obsidian's community plugin policies, plugins must disclose their network activity. 
+
+This plugin requires an active internet connection to function. It makes outbound requests **exclusively** to the official Last.fm API (`https://ws.audioscrobbler.com`) to fetch your scrobble history, top artists, top albums, and track metadata based on the username and API key you provide. 
+
+---
+
 ## Installation
 
 This plugin is currently in development and can be installed manually via GitHub Releases:
