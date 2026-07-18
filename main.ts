@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, normalizePath, Modal } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, normalizePath } from 'obsidian';
 
 interface LastFmSettings {
     apiKey: string;
@@ -7,8 +7,12 @@ interface LastFmSettings {
     lastSync: number;
     syncArtists: boolean;
     syncAlbums: boolean;
-    linkTracks: boolean;
+    linkArtists: boolean;
+    linkAlbums: boolean;
     tzOffset: number;
+    bfTracks: string;
+    bfAlbums: string;
+    bfArtists: string;
 }
 
 const DEFAULT_SETTINGS: LastFmSettings = {
@@ -18,8 +22,12 @@ const DEFAULT_SETTINGS: LastFmSettings = {
     lastSync: 0,
     syncArtists: true,
     syncAlbums: true,
-    linkTracks: true,
-    tzOffset: 0
+    linkArtists: true,
+    linkAlbums: true,
+    tzOffset: 5.5,
+    bfTracks: '50',
+    bfAlbums: '20',
+    bfArtists: '20'
 }
 
 export default class LastFmPlugin extends Plugin {
@@ -34,29 +42,21 @@ export default class LastFmPlugin extends Plugin {
             name: 'Sync Last.fm (Incremental)',
             callback: () => this.syncLastFm(false)
         });
-
-        this.addCommand({
-            id: 'backfill-lastfm',
-            name: 'Backfill Last.fm History',
-            callback: () => {
-                new BackfillModal(this.app, this).open();
-            }
-        });
     }
 
     async syncLastFm(isBackfill: boolean, limits = { tracks: 50, albums: 50, artists: 50 }) {
         if (!this.settings.apiKey || !this.settings.username) {
-            new Notice("Last.fm: Please configure API Key and Username in settings.");
+            new Notice("Last.fm: Please configure API Key and Username.");
             return;
         }
 
+        let stats = { added: 0, updated: 0 };
+        const baseDir = normalizePath(this.settings.folderName);
+        const tracksDir = normalizePath(`${baseDir}/Tracks`);
+        const artistsDir = normalizePath(`${baseDir}/Artists`);
+        const albumsDir = normalizePath(`${baseDir}/Albums`);
+        
         try {
-            const baseDir = normalizePath(this.settings.folderName);
-            const tracksDir = normalizePath(`${baseDir}/Tracks`);
-            const artistsDir = normalizePath(`${baseDir}/Artists`);
-            const albumsDir = normalizePath(`${baseDir}/Albums`);
-            
-            // Create required folders
             const dirsToCreate = [baseDir, tracksDir];
             if (this.settings.syncArtists) dirsToCreate.push(artistsDir);
             if (this.settings.syncAlbums) dirsToCreate.push(albumsDir);
@@ -66,10 +66,15 @@ export default class LastFmPlugin extends Plugin {
                     await this.app.vault.createFolder(path);
                 }
             }
+        } catch (e) {
+            new Notice("Folder creation error: " + (e as Error).message);
+            return;
+        }
 
-            // Fetch Artists
-            if (this.settings.syncArtists && limits.artists > 0) {
-                new Notice("Syncing Artists...");
+        // Fetch Artists
+        if (this.settings.syncArtists && limits.artists > 0) {
+            new Notice("Syncing Artists...");
+            try {
                 const url = `https://ws.audioscrobbler.com/2.0/?method=user.gettopartists&user=${this.settings.username}&api_key=${this.settings.apiKey}&format=json&limit=${limits.artists}`;
                 const res = await fetch(url);
                 const data = await res.json();
@@ -81,29 +86,36 @@ export default class LastFmPlugin extends Plugin {
                         if (!safeTitle) continue;
                         
                         const filePath = normalizePath(`${artistsDir}/${safeTitle}.md`);
+                        const imageUrl = artist.image && artist.image[3] && artist.image[3]['#text'] ? artist.image[3]['#text'] : "";
+                        
                         const content = `---
 lastfm_type: "artist"
 lastfm_name: "${artist.name.replace(/"/g, "'")}"
 lastfm_playcount: ${artist.playcount}
 lastfm_url: "${artist.url}"
+lastfm_image: "${imageUrl}"
 ---
 # ${artist.name}
 **Total Plays**: ${artist.playcount}
 [View on Last.fm](${artist.url})
+${imageUrl ? `\n![Artist Photo](${imageUrl})` : ""}
 
 ## Tracks
 `;
-                        // Only create if it doesn't exist to avoid overwriting backlinks
                         if (!await this.app.vault.adapter.exists(filePath)) {
-                            await this.saveFile(filePath, content);
+                            await this.saveFile(filePath, content, stats);
                         }
                     }
                 }
+            } catch (e) {
+                new Notice("Error fetching Artists: " + (e as Error).message);
             }
+        }
 
-            // Fetch Albums
-            if (this.settings.syncAlbums && limits.albums > 0) {
-                new Notice("Syncing Albums...");
+        // Fetch Albums
+        if (this.settings.syncAlbums && limits.albums > 0) {
+            new Notice("Syncing Albums...");
+            try {
                 const url = `https://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=${this.settings.username}&api_key=${this.settings.apiKey}&format=json&limit=${limits.albums}`;
                 const res = await fetch(url);
                 const data = await res.json();
@@ -133,17 +145,19 @@ lastfm_image: "${imageUrl}"
 ## Tracks
 `;
                         if (!await this.app.vault.adapter.exists(filePath)) {
-                            await this.saveFile(filePath, content);
+                            await this.saveFile(filePath, content, stats);
                         }
                     }
                 }
+            } catch (e) {
+                new Notice("Error fetching Albums: " + (e as Error).message);
             }
+        }
 
-            // Fetch Tracks
-            new Notice("Syncing Tracks...");
+        // Fetch Tracks
+        new Notice("Syncing Tracks...");
+        try {
             let tracksUrl = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${this.settings.username}&api_key=${this.settings.apiKey}&extended=1&format=json&limit=${limits.tracks}`;
-            
-            // Apply incremental sync logic
             if (!isBackfill && this.settings.lastSync > 0) {
                 tracksUrl += `&from=${this.settings.lastSync}`;
             }
@@ -156,7 +170,6 @@ lastfm_image: "${imageUrl}"
                 const tracks = Array.isArray(tracksData.recenttracks.track) ? tracksData.recenttracks.track : [tracksData.recenttracks.track];
                 
                 for (const track of tracks) {
-                    // Skip 'now playing' tracks as they don't have a final timestamp yet
                     if (track['@attr'] && track['@attr'].nowplaying) continue;
 
                     const trackUts = parseInt(track.date.uts, 10);
@@ -169,9 +182,9 @@ lastfm_image: "${imageUrl}"
                     const albumName = track.album['#text'] || "Unknown";
                     const imageUrl = track.image && track.image[3] ? track.image[3]['#text'] : "";
 
-                    // Fetch playcount individually for accuracy
                     let playcount = 1;
                     let isLiked = (track.loved === "1");
+                    
                     try {
                         const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&user=${this.settings.username}&api_key=${this.settings.apiKey}&artist=${encodeURIComponent(artistName)}&track=${encodeURIComponent(track.name)}&format=json`;
                         const infoRes = await fetch(infoUrl);
@@ -182,9 +195,9 @@ lastfm_image: "${imageUrl}"
                         }
                     } catch(e) { }
 
-                    // Apply time zone offset
-                    const adjustedTime = new Date((trackUts + (this.settings.tzOffset * 3600)) * 1000);
-                    const lastScrobble = adjustedTime.toLocaleString();
+                    // Pure UTC math calculation to bypass system timezone
+                    const adjustedDate = new Date((trackUts * 1000) + (this.settings.tzOffset * 3600 * 1000));
+                    const lastScrobble = adjustedDate.toISOString().replace('T', ' ').substring(0, 16);
 
                     const filePath = normalizePath(`${tracksDir}/${safeTitle}.md`);
                     const content = `---
@@ -194,6 +207,7 @@ lastfm_artist: "${artistName.replace(/"/g, "'")}"
 lastfm_album: "${albumName.replace(/"/g, "'")}"
 lastfm_playcount: ${playcount}
 lastfm_liked: ${isLiked}
+lastfm_uts: ${trackUts}
 lastfm_last_scrobble: "${lastScrobble}"
 lastfm_url: "${track.url}"
 lastfm_image: "${imageUrl}"
@@ -207,19 +221,16 @@ lastfm_image: "${imageUrl}"
 
 ![Cover Art](${imageUrl})
 `;
-                    await this.saveFile(filePath, content);
+                    await this.saveFile(filePath, content, stats);
 
-                    // Add backlinks to Artists/Albums if enabled
-                    if (this.settings.linkTracks) {
-                        const trackLink = `- [[${safeTitle}]]`;
-                        if (this.settings.syncArtists) {
-                            const safeArtist = artistName.replace(/[^a-zA-Z0-9 -]/g, '').trim();
-                            await this.appendBacklink(artistsDir, safeArtist, trackLink);
-                        }
-                        if (this.settings.syncAlbums && albumName !== "Unknown") {
-                            const safeAlbum = albumName.replace(/[^a-zA-Z0-9 -]/g, '').trim();
-                            await this.appendBacklink(albumsDir, safeAlbum, trackLink);
-                        }
+                    const trackLink = `- [[${safeTitle}]]`;
+                    if (this.settings.syncArtists && this.settings.linkArtists) {
+                        const safeArtist = artistName.replace(/[^a-zA-Z0-9 -]/g, '').trim();
+                        await this.appendBacklink(artistsDir, safeArtist, trackLink);
+                    }
+                    if (this.settings.syncAlbums && this.settings.linkAlbums && albumName !== "Unknown") {
+                        const safeAlbum = albumName.replace(/[^a-zA-Z0-9 -]/g, '').trim();
+                        await this.appendBacklink(albumsDir, safeAlbum, trackLink);
                     }
                 }
             }
@@ -228,18 +239,50 @@ lastfm_image: "${imageUrl}"
                 this.settings.lastSync = latestSyncTime;
                 await this.saveSettings();
             }
-            new Notice("Last.fm Sync Complete!");
+            new Notice(`Sync Complete! Added: ${stats.added}, Updated: ${stats.updated}`);
         } catch (e) {
-            new Notice("Last.fm Sync Failed: " + (e as Error).message);
+            new Notice("Error fetching Tracks: " + (e as Error).message);
         }
     }
 
-    async saveFile(filePath: string, content: string) {
+    async restampDates() {
+        const tracksDir = normalizePath(`${this.settings.folderName}/Tracks`);
+        const folder = this.app.vault.getAbstractFileByPath(tracksDir);
+        if (!folder || !(folder instanceof TFolder)) {
+            new Notice("No Tracks folder found.");
+            return;
+        }
+
+        let updated = 0;
+        new Notice("Re-stamping dates...");
+        for (const file of folder.children) {
+            if (file instanceof TFile) {
+                let content = await this.app.vault.read(file);
+                const utsMatch = content.match(/lastfm_uts:\s*(\d+)/);
+                if (utsMatch) {
+                    const uts = parseInt(utsMatch[1], 10);
+                    const adjustedDate = new Date((uts * 1000) + (this.settings.tzOffset * 3600 * 1000));
+                    const newDateStr = adjustedDate.toISOString().replace('T', ' ').substring(0, 16);
+                    
+                    content = content.replace(/lastfm_last_scrobble:\s*".*?"/, `lastfm_last_scrobble: "${newDateStr}"`);
+                    content = content.replace(/\*\*Last Scrobble\*\*: .*/, `**Last Scrobble**: ${newDateStr}`);
+                    
+                    await this.app.vault.modify(file, content);
+                    updated++;
+                }
+            }
+        }
+        new Notice(`Successfully re-stamped ${updated} tracks!`);
+    }
+
+    async saveFile(filePath: string, content: string, stats: {added: number, updated: number}) {
         const file = this.app.vault.getAbstractFileByPath(filePath);
         if (file instanceof TFile) {
             await this.app.vault.modify(file, content);
+            stats.updated++;
         } else {
             await this.app.vault.create(filePath, content);
+            stats.added++;
         }
     }
 
@@ -264,45 +307,6 @@ lastfm_image: "${imageUrl}"
     }
 }
 
-class BackfillModal extends Modal {
-    plugin: LastFmPlugin;
-    tracks: string = "50";
-    albums: string = "20";
-    artists: string = "20";
-
-    constructor(app: App, plugin: LastFmPlugin) {
-        super(app);
-        this.plugin = plugin;
-    }
-
-    onOpen() {
-        const {containerEl} = this;
-        containerEl.empty();
-        
-        containerEl.createEl("h2", {text: "Backfill Last.fm History"});
-
-        new Setting(containerEl).setName("Number of Tracks").addText(text => text.setValue(this.tracks).onChange(v => this.tracks = v));
-        new Setting(containerEl).setName("Number of Albums").addText(text => text.setValue(this.albums).onChange(v => this.albums = v));
-        new Setting(containerEl).setName("Number of Artists").addText(text => text.setValue(this.artists).onChange(v => this.artists = v));
-
-        new Setting(containerEl).addButton(btn => btn
-            .setButtonText("Start Backfill")
-            .setCta()
-            .onClick(() => {
-                this.close();
-                this.plugin.syncLastFm(true, {
-                    tracks: parseInt(this.tracks) || 0,
-                    albums: parseInt(this.albums) || 0,
-                    artists: parseInt(this.artists) || 0
-                });
-            }));
-    }
-
-    onClose() {
-        this.containerEl.empty();
-    }
-}
-
 class LastFmSettingTab extends PluginSettingTab {
     plugin: LastFmPlugin;
 
@@ -314,34 +318,66 @@ class LastFmSettingTab extends PluginSettingTab {
     display(): void {
         const {containerEl} = this;
         containerEl.empty();
+        
+        containerEl.createEl('h3', {text: 'General Settings'});
 
-        new Setting(containerEl)
-            .setName('Last.fm API Key')
-            .addText(text => text.setValue(this.plugin.settings.apiKey).onChange(async (v) => { this.plugin.settings.apiKey = v; await this.plugin.saveSettings(); }));
-
-        new Setting(containerEl)
-            .setName('Last.fm Username')
-            .addText(text => text.setValue(this.plugin.settings.username).onChange(async (v) => { this.plugin.settings.username = v; await this.plugin.saveSettings(); }));
-
-        new Setting(containerEl)
-            .setName('Folder Name')
-            .addText(text => text.setValue(this.plugin.settings.folderName).onChange(async (v) => { this.plugin.settings.folderName = v; await this.plugin.saveSettings(); }));
-
+        new Setting(containerEl).setName('Last.fm API Key').addText(text => text.setValue(this.plugin.settings.apiKey).onChange(async (v) => { this.plugin.settings.apiKey = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Last.fm Username').addText(text => text.setValue(this.plugin.settings.username).onChange(async (v) => { this.plugin.settings.username = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Folder Name').addText(text => text.setValue(this.plugin.settings.folderName).onChange(async (v) => { this.plugin.settings.folderName = v; await this.plugin.saveSettings(); }));
+        
         new Setting(containerEl)
             .setName('Timezone Offset (Hours)')
-            .setDesc('Adjust if scrobble dates are incorrect (e.g., 5.5 for IST)')
+            .setDesc('Shift UTC time. Use positive for ahead, negative for behind (e.g., 5.5 for IST).')
             .addText(text => text.setValue(this.plugin.settings.tzOffset.toString()).onChange(async (v) => { this.plugin.settings.tzOffset = parseFloat(v) || 0; await this.plugin.saveSettings(); }));
 
         new Setting(containerEl)
-            .setName('Sync Artists')
-            .addToggle(toggle => toggle.setValue(this.plugin.settings.syncArtists).onChange(async (v) => { this.plugin.settings.syncArtists = v; await this.plugin.saveSettings(); }));
+            .setName('Re-stamp Scrobble Dates')
+            .setDesc('Recalculate last scrobble times for existing files using the current Timezone offset. Does not use the API.')
+            .addButton(btn => btn.setButtonText('Re-stamp').onClick(async () => await this.plugin.restampDates()));
+
+        containerEl.createEl('h3', {text: 'Sync Preferences'});
+
+        new Setting(containerEl).setName('Sync Artists').addToggle(toggle => toggle.setValue(this.plugin.settings.syncArtists).onChange(async (v) => { this.plugin.settings.syncArtists = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Sync Albums').addToggle(toggle => toggle.setValue(this.plugin.settings.syncAlbums).onChange(async (v) => { this.plugin.settings.syncAlbums = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Link Tracks in Artists').addToggle(toggle => toggle.setValue(this.plugin.settings.linkArtists).onChange(async (v) => { this.plugin.settings.linkArtists = v; await this.plugin.saveSettings(); }));
+        new Setting(containerEl).setName('Link Tracks in Albums').addToggle(toggle => toggle.setValue(this.plugin.settings.linkAlbums).onChange(async (v) => { this.plugin.settings.linkAlbums = v; await this.plugin.saveSettings(); }));
+
+        containerEl.createEl('h3', {text: 'Experimental'});
 
         new Setting(containerEl)
-            .setName('Sync Albums')
-            .addToggle(toggle => toggle.setValue(this.plugin.settings.syncAlbums).onChange(async (v) => { this.plugin.settings.syncAlbums = v; await this.plugin.saveSettings(); }));
+            .setName('Backfill History')
+            .setDesc('Experimental: Fetch historical data based on the limits below.')
+            .addButton(btn => btn.setButtonText('Start Backfill').onClick(() => {
+                this.plugin.syncLastFm(true, {
+                    tracks: parseInt(this.plugin.settings.bfTracks) || 0,
+                    albums: parseInt(this.plugin.settings.bfAlbums) || 0,
+                    artists: parseInt(this.plugin.settings.bfArtists) || 0
+                });
+            }));
+
+        new Setting(containerEl).setName('Backfill Tracks Limit').addText(t => t.setValue(this.plugin.settings.bfTracks).onChange(async v => {this.plugin.settings.bfTracks = v; await this.plugin.saveSettings()}));
+        new Setting(containerEl).setName('Backfill Albums Limit').addText(t => t.setValue(this.plugin.settings.bfAlbums).onChange(async v => {this.plugin.settings.bfAlbums = v; await this.plugin.saveSettings()}));
+        new Setting(containerEl).setName('Backfill Artists Limit').addText(t => t.setValue(this.plugin.settings.bfArtists).onChange(async v => {this.plugin.settings.bfArtists = v; await this.plugin.saveSettings()}));
+
+        containerEl.createEl('h3', {text: 'Danger Zone'});
 
         new Setting(containerEl)
-            .setName('Link Tracks in Artist/Album Files')
-            .addToggle(toggle => toggle.setValue(this.plugin.settings.linkTracks).onChange(async (v) => { this.plugin.settings.linkTracks = v; await this.plugin.saveSettings(); }));
+            .setName('Delete All Synced Data')
+            .setDesc('WARNING: This will permanently delete your assigned Last.fm folder and all notes inside it.')
+            .addButton(btn => btn
+                .setButtonText('Delete')
+                .setWarning()
+                .onClick(async () => {
+                    const folder = this.plugin.app.vault.getAbstractFileByPath(normalizePath(this.plugin.settings.folderName));
+                    if (folder instanceof TFolder) {
+                        await this.plugin.app.vault.trash(folder, true);
+                        new Notice("Deleted all Last.fm data.");
+                        this.plugin.settings.lastSync = 0;
+                        await this.plugin.saveSettings();
+                    } else {
+                        new Notice("Folder not found. Nothing to delete.");
+                    }
+                })
+            );
     }
 }
