@@ -297,7 +297,7 @@ lastfm_image: "${imageUrl}"
         if (isBackfill) {
             new Notice(`Backfill Complete! Artists: ${stats.artists}, Albums: ${stats.albums}, Tracks: ${stats.tracksAdded + stats.tracksUpdated}`);
         } else {
-            new Notice(`Sync Complete! Tracks Added: ${stats.tracksAdded}, Updated: ${stats.tracksUpdated}`);
+            new Notice(`Sync Complete! Artists Added: ${stats.artists}, Albums Added: ${stats.albums}, Tracks Added: ${stats.tracksAdded}, Updated: ${stats.tracksUpdated}`);
         }
     }
 
