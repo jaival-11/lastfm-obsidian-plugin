@@ -1,0 +1,9 @@
+{
+  "id": "lastfm-sync",
+  "name": "Last.fm Sync",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Fetches top tracks from Last.fm and creates scrobble notes with properties.",
+  "author": "You",
+  "isDesktopOnly": false
+}

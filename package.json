@@ -1,0 +1,12 @@
+{
+  "name": "obsidian-lastfm-sync",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "esbuild main.ts --bundle --platform=node --target=es2018 --format=cjs --outfile=main.js --external:obsidian"
+  },
+  "devDependencies": {
+    "esbuild": "0.17.18",
+    "obsidian": "latest",
+    "typescript": "latest"
+  }
+}
