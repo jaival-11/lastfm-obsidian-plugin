@@ -33,6 +33,8 @@ const DEFAULT_SETTINGS: LastFmSettings = {
 }
 
 export default class LastFmPlugin extends Plugin {
+    isBackfillActive: boolean = false;
+    isBackfillCancelled: boolean = false;
     settings: LastFmSettings;
 
     async onload() {
@@ -46,7 +48,7 @@ export default class LastFmPlugin extends Plugin {
         });
 
         try {
-            this.addRibbonIcon('sync', 'Sync Trakt', () => {
+            this.addRibbonIcon('sync', 'Sync Last.fm', () => {
                 this.syncLastFm(false);
             });
         } catch (e) {
@@ -72,6 +74,10 @@ export default class LastFmPlugin extends Plugin {
             return;
         }
 
+        if (isBackfill) {
+            this.isBackfillActive = true;
+            this.isBackfillCancelled = false;
+        }
         let stats = { artists: 0, albums: 0, tracksAdded: 0, tracksUpdated: 0 };
         const baseDir = normalizePath(this.settings.folderName);
         const tracksDir = normalizePath(`${baseDir}/Tracks`);
@@ -90,6 +96,7 @@ export default class LastFmPlugin extends Plugin {
             }
         } catch (e) {
             new Notice("Folder creation error: " + (e as Error).message);
+            this.isBackfillActive = false;
             return;
         }
 
@@ -104,6 +111,11 @@ export default class LastFmPlugin extends Plugin {
                 if (data.topartists && data.topartists.artist) {
                     const artists = Array.isArray(data.topartists.artist) ? data.topartists.artist : [data.topartists.artist];
                     for (const artist of artists) {
+                        if (isBackfill && this.isBackfillCancelled) {
+                            new Notice(`Backfill stopped. Imported: ${stats.artists} artists, ${stats.albums} albums, ${stats.tracksAdded + stats.tracksUpdated} tracks.`);
+                            this.isBackfillActive = false;
+                            return;
+                        }
                         const safeTitle = artist.name.replace(/[^a-zA-Z0-9 -]/g, '').trim();
                         if (!safeTitle) continue;
                         
@@ -127,7 +139,7 @@ lastfm_url: "${artist.url}"
                     }
                 }
             } catch (e) {
-                new Notice("Error fetching Artists.");
+                new Notice("Error fetching Artists: " + (e as Error).message);
             }
         }
 
@@ -142,6 +154,11 @@ lastfm_url: "${artist.url}"
                 if (data.topalbums && data.topalbums.album) {
                     const albums = Array.isArray(data.topalbums.album) ? data.topalbums.album : [data.topalbums.album];
                     for (const album of albums) {
+                        if (isBackfill && this.isBackfillCancelled) {
+                            new Notice(`Backfill stopped. Imported: ${stats.artists} artists, ${stats.albums} albums, ${stats.tracksAdded + stats.tracksUpdated} tracks.`);
+                            this.isBackfillActive = false;
+                            return;
+                        }
                         const safeTitle = album.name.replace(/[^a-zA-Z0-9 -]/g, '').trim();
                         if (!safeTitle) continue;
                         
@@ -170,7 +187,7 @@ lastfm_image: "${imageUrl}"
                     }
                 }
             } catch (e) {
-                new Notice("Error fetching Albums.");
+                new Notice("Error fetching Albums: " + (e as Error).message);
             }
         }
 
@@ -196,6 +213,11 @@ lastfm_image: "${imageUrl}"
                     const tracks = Array.isArray(tracksData.recenttracks.track) ? tracksData.recenttracks.track : [tracksData.recenttracks.track];
                     
                     for (const track of tracks) {
+                        if (isBackfill && this.isBackfillCancelled) {
+                            new Notice(`Backfill stopped. Imported: ${stats.artists} artists, ${stats.albums} albums, ${stats.tracksAdded + stats.tracksUpdated} tracks.`);
+                            this.isBackfillActive = false;
+                            return;
+                        }
                         if (track['@attr'] && track['@attr'].nowplaying) continue;
 
                         const trackUts = parseInt(track.date.uts, 10);
@@ -266,9 +288,11 @@ lastfm_image: "${imageUrl}"
                     await this.saveSettings();
                 }
             } catch (e) {
-                new Notice("Error fetching Tracks.");
+                new Notice("Error fetching Tracks: " + (e as Error).message);
             }
         }
+
+        this.isBackfillActive = false;
 
         if (isBackfill) {
             new Notice(`Backfill Complete! Artists: ${stats.artists}, Albums: ${stats.albums}, Tracks: ${stats.tracksAdded + stats.tracksUpdated}`);
@@ -402,5 +426,16 @@ class LastFmSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName('Backfill Tracks Limit').addText(t => t.setValue(this.plugin.settings.bfTracks).onChange(async v => {this.plugin.settings.bfTracks = v; await this.plugin.saveSettings()}));
         new Setting(containerEl).setName('Backfill Albums Limit').addText(t => t.setValue(this.plugin.settings.bfAlbums).onChange(async v => {this.plugin.settings.bfAlbums = v; await this.plugin.saveSettings()}));
         new Setting(containerEl).setName('Backfill Artists Limit').addText(t => t.setValue(this.plugin.settings.bfArtists).onChange(async v => {this.plugin.settings.bfArtists = v; await this.plugin.saveSettings()}));
+
+        new Setting(containerEl)
+            .setName('Force Stop Backfill')
+            .setDesc('Immediately stop an ongoing backfill operation.')
+            .addButton(btn => btn.setButtonText('Stop').setWarning().onClick(() => {
+                if (this.plugin.isBackfillActive) {
+                    this.plugin.isBackfillCancelled = true;
+                } else {
+                    new Notice("Backfill is not currently running.");
+                }
+            }));
     }
 }
