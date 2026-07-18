@@ -49,7 +49,7 @@ export default class LastFmPlugin extends Plugin {
         this.addSettingTab(new LastFmSettingTab(this.app, this));
 
         this.addCommand({
-            id: 'sync-lastfm',
+            id: 'sync',
             name: 'Sync from Last.fm',
             callback: () => { void this.syncLastFm(false); }
         });
@@ -365,7 +365,8 @@ lastfm_image: "${imageUrl}"
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const loadedData = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData as unknown as Partial<LastFmSettings>);
     }
 
     async saveSettings() {
@@ -385,7 +386,7 @@ class LastFmSettingTab extends PluginSettingTab {
         const {containerEl} = this;
         containerEl.empty();
         
-        new Setting(containerEl).setName('General Settings').setHeading();
+        new Setting(containerEl).setName('Account Configuration').setHeading();
 
         new Setting(containerEl).setName('Last.fm API Key').addText(text => text.setValue(this.plugin.settings.apiKey).onChange(async (v) => { this.plugin.settings.apiKey = v; await this.plugin.saveSettings(); }));
         new Setting(containerEl).setName('Last.fm Username').addText(text => text.setValue(this.plugin.settings.username).onChange(async (v) => { this.plugin.settings.username = v; await this.plugin.saveSettings(); }));
