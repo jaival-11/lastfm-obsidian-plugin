@@ -365,8 +365,8 @@ lastfm_image: "${imageUrl}"
     }
 
     async loadSettings() {
-        const loadedData = await this.loadData();
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData as unknown as Partial<LastFmSettings>);
+        const loadedData: unknown = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData as Partial<LastFmSettings>);
     }
 
     async saveSettings() {
@@ -376,6 +376,10 @@ lastfm_image: "${imageUrl}"
 
 class LastFmSettingTab extends PluginSettingTab {
     plugin: LastFmPlugin;
+
+    getSettingDefinitions() {
+        return [];
+    }
 
     constructor(app: App, plugin: LastFmPlugin) {
         super(app, plugin);
