@@ -1,9 +1,9 @@
 {
-  "id": "sync-lastfm",
-  "name": "Sync Last.fm",
+  "id": "lastfm-sync",
+  "name": "Last.fm Sync",
   "version": "1.0.0",
-  "minAppVersion": "0.15.0",
-  "description": "Seamlessly fetch scrobbles, artists, albums and cover art from Last.fm and auto creates notes with properties which can be directly used in Base.",
-  "author": "jaival-11",
+  "minAppVersion": "1.13.0",
+  "description": "Fetches top tracks from Last.fm and creates scrobble notes with properties.",
+  "author": "Jaival",
   "isDesktopOnly": false
 }
