@@ -3,7 +3,7 @@
   "name": "Sync Last.fm",
   "version": "1.0.0",
   "minAppVersion": "0.15.0",
-  "description": "Fetches scrobbles, artists, albums from Last.fm and auto creates notes with properties which can be directly used in Base.",
+  "description": "Seamlessly fetch scrobbles, artists, albums and cover art from Last.fm and auto creates notes with properties which can be directly used in Base.",
   "author": "jaival-11",
   "isDesktopOnly": false
 }
