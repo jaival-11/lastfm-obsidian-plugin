@@ -55,7 +55,7 @@ export default class LastFmPlugin extends Plugin {
         });
 
         try {
-            this.addRibbonIcon('sync', 'Sync Trakt', () => {
+            this.addRibbonIcon('sync', 'Sync Last.fm', () => {
                 void this.syncLastFm(false);
             });
         } catch {
