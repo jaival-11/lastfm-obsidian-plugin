@@ -447,7 +447,7 @@ class LastFmSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName('Force Stop Backfill')
             .setDesc('Immediately stop an ongoing backfill operation.')
-            .addButton(btn => btn.setButtonText('Stop').setDestructive().onClick(() => {
+            .addButton(btn => btn.setButtonText('Stop').onClick(() => {
                 if (this.plugin.isBackfillActive) {
                     this.plugin.isBackfillCancelled = true;
                 } else {
