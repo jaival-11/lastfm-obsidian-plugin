@@ -12,6 +12,7 @@ Seamlessly fetch scrobbles, artists, albums and cover art from Last.fm and auto 
 | [Screenshots](#screenshots) | Visual previews from tablet and mobile interfaces. |
 | [Features](#features) | A comprehensive list of what this plugin can do. |
 | [Installation](#installation) | Step-by-step guide to installing the plugin manually. |
+| [API Key Guide](#api-key-guide) | Steps to obtain your free Last.fm API key. |
 | [Feedback & Issues](#feedback--issues) | How to report bugs or request features. |
 | [License & Legal](#license--legal) | Copyright, AI, and licensing information. |
 
@@ -54,17 +55,62 @@ This plugin requires an active internet connection to function. It makes outboun
 
 ## Installation
 
-This plugin is currently in development and can be installed manually via GitHub Releases:
+<details>
+  <summary><strong>From Obsidian Community (Recommended)</strong></summary>
+  
+  The easiest way to install and keep the plugin updated:
+  
+  1. Open Obsidian and go to **Settings** > **Community Plugins**.
+  2. Turn off "Safe Mode" if you haven't already.
+  3. Click **Browse** and search for **Last.fm Sync**.
+  4. Click **Install**, then click **Enable**.
+  
+  Alternatively, click here to open it directly in Obsidian: 
+  [Install Last.fm Sync](https://community.obsidian.md/plugins/sync-lastfm)
+</details>
+
+<details>
+  <summary><strong>Install Manually</strong></summary>
+
+  If you prefer to install manually via GitHub Releases:
+
 
 1. Go to the [Releases page](https://github.com/jaival-11/lastfm-obsidian-plugin/releases) of this repository.
 2. Download the latest `main.js` and `manifest.json` files.
-3. Open your Android file manager and navigate to your Obsidian Vault. 
+3. Open your file manager and navigate to your Obsidian Vault. 
 4. Make sure you can see hidden files (enable "Show hidden files" in your file manager settings).
 5. Navigate to `.obsidian` > `plugins`.
 6. Create a new folder inside `plugins` named `sync-last.fm`.
 7. Move the downloaded `main.js` and `manifest.json` files into this new `sync-last.fm` folder.
 8. Restart Obsidian, go to **Settings** > **Community Plugins**, and turn off "Safe Mode".
 9. Toggle on **Last.fm Sync** in the plugin list.
+</details>
+
+<details>
+  <summary><strong>Manually Build Yourself</strong></summary>
+
+  If you want to compile the plugin from the source code:
+
+  1. Clone this repository: `git clone https://github.com/jaival-11/lastfm-obsidian-plugin.git`
+  2. Navigate to the directory: `cd lastfm-obsidian-plugin`
+  3. Install the dependencies: `npm install`
+  4. Build the plugin: `npm run build`
+  5. Create a folder named `sync-last.fm` in your vault's `.obsidian/plugins/` directory.
+  6. Copy the newly generated `main.js` and `manifest.json` into that folder.
+  7. Restart Obsidian and enable the plugin.
+</details>
+
+---
+
+## API Key Guide
+
+To sync your data, you will need a free API key from Last.fm:
+
+1. Go to the [Last.fm API Account Creation page](https://www.last.fm/api/account/create).
+2. Log in with your Last.fm account if you aren't already logged in.
+3. Fill out the application form (you only need to provide an **Application name**, e.g., "Last.fm for Obsidian").
+4. Submit the form to generate your credentials.
+5. Copy the **API Key** (you do not need the shared secret) and paste it into the plugin's settings in Obsidian.
 
 ---
 
