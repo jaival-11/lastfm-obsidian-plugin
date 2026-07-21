@@ -50,7 +50,7 @@ export default class LastFmPlugin extends Plugin {
 
         this.addCommand({
             id: 'sync',
-            name: 'Sync from Last.fm',
+            name: 'Sync',
             callback: () => { void this.syncLastFm(false); }
         });
 

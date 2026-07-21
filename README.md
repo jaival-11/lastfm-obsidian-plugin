@@ -57,14 +57,14 @@ This plugin requires an active internet connection to function. It makes outboun
 
 <details>
   <summary><strong>From Obsidian Community (Recommended)</strong></summary>
-  
+ 
   The easiest way to install and keep the plugin updated:
-  
+ 
   1. Open Obsidian and go to **Settings** > **Community Plugins**.
   2. Turn off "Safe Mode" if you haven't already.
   3. Click **Browse** and search for **Last.fm Sync**.
   4. Click **Install**, then click **Enable**.
-  
+ 
   Alternatively, click here to open it directly in Obsidian: 
   [Install Last.fm Sync](https://community.obsidian.md/plugins/sync-lastfm)
 </details>
