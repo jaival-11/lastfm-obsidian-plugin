@@ -417,7 +417,17 @@ class LastFmSettingTab extends PluginSettingTab {
         if (this.activeTab === 'account') {
             new Setting(contentEl).setName('Account Configuration').setHeading();
 
-            new Setting(contentEl).setName('Last.fm API Key').addText(text => text.setValue(this.plugin.settings.apiKey).onChange(async (v) => { this.plugin.settings.apiKey = v; await this.plugin.saveSettings(); }));
+            const apiKeyDesc = document.createDocumentFragment();
+            apiKeyDesc.append('Click here to see ');
+            const apiKeyLink = document.createElement('a');
+            apiKeyLink.textContent = 'guide';
+            apiKeyLink.href = 'https://github.com/jaival-11/lastfm-obsidian-plugin#api-key-guide';
+            apiKeyDesc.appendChild(apiKeyLink);
+
+            new Setting(contentEl)
+                .setName('Last.fm API Key')
+                .setDesc(apiKeyDesc)
+                .addText(text => text.setValue(this.plugin.settings.apiKey).onChange(async (v) => { this.plugin.settings.apiKey = v; await this.plugin.saveSettings(); }));
             new Setting(contentEl).setName('Last.fm Username').addText(text => text.setValue(this.plugin.settings.username).onChange(async (v) => { this.plugin.settings.username = v; await this.plugin.saveSettings(); }));
             new Setting(contentEl).setName('Folder Name').addText(text => text.setValue(this.plugin.settings.folderName).onChange(async (v) => { this.plugin.settings.folderName = v; await this.plugin.saveSettings(); }));
             
