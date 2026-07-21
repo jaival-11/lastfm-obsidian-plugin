@@ -76,12 +76,12 @@ This plugin requires an active internet connection to function. It makes outboun
 
 
 1. Go to the [Releases page](https://github.com/jaival-11/lastfm-obsidian-plugin/releases) of this repository.
-2. Download the latest `main.js` and `manifest.json` files.
+2. Download the latest `main.js`, `styles.css` and `manifest.json` files.
 3. Open your file manager and navigate to your Obsidian Vault. 
 4. Make sure you can see hidden files (enable "Show hidden files" in your file manager settings).
 5. Navigate to `.obsidian` > `plugins`.
 6. Create a new folder inside `plugins` named `sync-last.fm`.
-7. Move the downloaded `main.js` and `manifest.json` files into this new `sync-last.fm` folder.
+7. Move the downloaded `main.js`, `styles.css` and `manifest.json` files into this new `sync-last.fm` folder.
 8. Restart Obsidian, go to **Settings** > **Community Plugins**, and turn off "Safe Mode".
 9. Toggle on **Last.fm Sync** in the plugin list.
 </details>
@@ -96,7 +96,7 @@ This plugin requires an active internet connection to function. It makes outboun
   3. Install the dependencies: `npm install`
   4. Build the plugin: `npm run build`
   5. Create a folder named `sync-last.fm` in your vault's `.obsidian/plugins/` directory.
-  6. Copy the newly generated `main.js` and `manifest.json` into that folder.
+  6. Copy the newly generated `main.js`, `styles.css` and `manifest.json` into that folder.
   7. Restart Obsidian and enable the plugin.
 </details>
 
