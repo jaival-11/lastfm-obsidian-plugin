@@ -1,0 +1,33 @@
+/* Last.fm Sync Plugin Settings Tabs Styling */
+
+.lastfm-settings-tab-nav {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+}
+
+.lastfm-settings-tab-btn {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 6px 14px;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.lastfm-settings-tab-btn:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.lastfm-settings-tab-btn.is-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    font-weight: 600;
+}

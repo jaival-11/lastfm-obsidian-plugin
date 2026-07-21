@@ -374,8 +374,11 @@ lastfm_image: "${imageUrl}"
     }
 }
 
+type SettingsTabId = 'account' | 'sync' | 'experimental';
+
 class LastFmSettingTab extends PluginSettingTab {
     plugin: LastFmPlugin;
+    activeTab: SettingsTabId = 'account';
 
     getSettingDefinitions() {
         return [];
@@ -390,69 +393,92 @@ class LastFmSettingTab extends PluginSettingTab {
         const {containerEl} = this;
         containerEl.empty();
         
-        new Setting(containerEl).setName('Account Configuration').setHeading();
+        const navEl = containerEl.createDiv({ cls: 'lastfm-settings-tab-nav' });
 
-        new Setting(containerEl).setName('Last.fm API Key').addText(text => text.setValue(this.plugin.settings.apiKey).onChange(async (v) => { this.plugin.settings.apiKey = v; await this.plugin.saveSettings(); }));
-        new Setting(containerEl).setName('Last.fm Username').addText(text => text.setValue(this.plugin.settings.username).onChange(async (v) => { this.plugin.settings.username = v; await this.plugin.saveSettings(); }));
-        new Setting(containerEl).setName('Folder Name').addText(text => text.setValue(this.plugin.settings.folderName).onChange(async (v) => { this.plugin.settings.folderName = v; await this.plugin.saveSettings(); }));
-        
-        new Setting(containerEl)
-            .setName('Sync on Start')
-            .setDesc('Automatically sync from Last.fm when Obsidian opens')
-            .addToggle(toggle => toggle.setValue(this.plugin.settings.syncOnStart).onChange(async (v) => { this.plugin.settings.syncOnStart = v; await this.plugin.saveSettings(); }));
-        
-        new Setting(containerEl)
-            .setName('Timezone Offset (Hours)')
-            .setDesc('Shift UTC time. Use positive for ahead, negative for behind (e.g., 5.5 for IST).')
-            .addText(text => text.setValue(this.plugin.settings.tzOffset.toString()).onChange(async (v) => { this.plugin.settings.tzOffset = parseFloat(v) || 0; await this.plugin.saveSettings(); }));
+        const tabs: { id: SettingsTabId; label: string }[] = [
+            { id: 'account', label: 'Account' },
+            { id: 'sync', label: 'Sync Preferences' },
+            { id: 'experimental', label: 'Experimental' },
+        ];
 
-        new Setting(containerEl)
-            .setName('Re-stamp Scrobble Dates')
-            .setDesc('Recalculate last scrobble times for existing files using the current Timezone offset. Does not use the API.')
-            .addButton(btn => btn.setButtonText('Re-stamp').onClick(() => { void this.plugin.restampDates(); }));
+        tabs.forEach(tab => {
+            const btn = navEl.createEl('button', {
+                text: tab.label,
+                cls: `lastfm-settings-tab-btn ${this.activeTab === tab.id ? 'is-active' : ''}`
+            });
+            btn.addEventListener('click', () => {
+                this.activeTab = tab.id;
+                this.display();
+            });
+        });
 
-        new Setting(containerEl).setName('Sync Preferences').setHeading();
+        const contentEl = containerEl.createDiv({ cls: 'lastfm-settings-tab-content' });
 
-        new Setting(containerEl).setName('Sync Artists').addToggle(toggle => toggle.setValue(this.plugin.settings.syncArtists).onChange(async (v) => { this.plugin.settings.syncArtists = v; await this.plugin.saveSettings(); }));
-        new Setting(containerEl).setName('Sync Albums').addToggle(toggle => toggle.setValue(this.plugin.settings.syncAlbums).onChange(async (v) => { this.plugin.settings.syncAlbums = v; await this.plugin.saveSettings(); }));
-        
-        new Setting(containerEl)
-            .setName('Link Tracks in Artists (beta)')
-            .setDesc('Attempts to list tracks under it and link them')
-            .addToggle(toggle => toggle.setValue(this.plugin.settings.linkArtists).onChange(async (v) => { this.plugin.settings.linkArtists = v; await this.plugin.saveSettings(); }));
-        
-        new Setting(containerEl)
-            .setName('Link Tracks in Albums (beta)')
-            .setDesc('Attempts to list tracks under it and link them')
-            .addToggle(toggle => toggle.setValue(this.plugin.settings.linkAlbums).onChange(async (v) => { this.plugin.settings.linkAlbums = v; await this.plugin.saveSettings(); }));
+        if (this.activeTab === 'account') {
+            new Setting(contentEl).setName('Account Configuration').setHeading();
 
-        new Setting(containerEl).setName('Experimental').setHeading();
+            new Setting(contentEl).setName('Last.fm API Key').addText(text => text.setValue(this.plugin.settings.apiKey).onChange(async (v) => { this.plugin.settings.apiKey = v; await this.plugin.saveSettings(); }));
+            new Setting(contentEl).setName('Last.fm Username').addText(text => text.setValue(this.plugin.settings.username).onChange(async (v) => { this.plugin.settings.username = v; await this.plugin.saveSettings(); }));
+            new Setting(contentEl).setName('Folder Name').addText(text => text.setValue(this.plugin.settings.folderName).onChange(async (v) => { this.plugin.settings.folderName = v; await this.plugin.saveSettings(); }));
+            
+            new Setting(contentEl)
+                .setName('Timezone Offset (Hours)')
+                .setDesc('Shift UTC time. Use positive for ahead, negative for behind (e.g., 5.5 for IST).')
+                .addText(text => text.setValue(this.plugin.settings.tzOffset.toString()).onChange(async (v) => { this.plugin.settings.tzOffset = parseFloat(v) || 0; await this.plugin.saveSettings(); }));
 
-        new Setting(containerEl)
-            .setName('Backfill History')
-            .setDesc('Fetch historical data based on limits below. Note: This feature is experimental')
-            .addButton(btn => btn.setButtonText('Start Backfill').onClick(() => {
-                void this.plugin.syncLastFm(true, {
-                    tracks: parseInt(this.plugin.settings.bfTracks) || 0,
-                    albums: parseInt(this.plugin.settings.bfAlbums) || 0,
-                    artists: parseInt(this.plugin.settings.bfArtists) || 0
-                });
-            }));
+            new Setting(contentEl)
+                .setName('Re-stamp Scrobble Dates')
+                .setDesc('Recalculate last scrobble times for existing files using the current Timezone offset. Does not use the API.')
+                .addButton(btn => btn.setButtonText('Re-stamp').onClick(() => { void this.plugin.restampDates(); }));
+        } else if (this.activeTab === 'sync') {
+            new Setting(contentEl).setName('Sync Preferences').setHeading();
 
-        new Setting(containerEl).setName('Backfill Tracks Limit').addText(t => t.setValue(this.plugin.settings.bfTracks).onChange(async v => {this.plugin.settings.bfTracks = v; await this.plugin.saveSettings()}));
-        new Setting(containerEl).setName('Backfill Albums Limit').addText(t => t.setValue(this.plugin.settings.bfAlbums).onChange(async v => {this.plugin.settings.bfAlbums = v; await this.plugin.saveSettings()}));
-        
-        new Setting(containerEl).setName('Backfill Artists Limit').addText(t => t.setValue(this.plugin.settings.bfArtists).onChange(async v => {this.plugin.settings.bfArtists = v; await this.plugin.saveSettings()}));
+            new Setting(contentEl)
+                .setName('Sync on Start')
+                .setDesc('Automatically sync from Last.fm when Obsidian opens')
+                .addToggle(toggle => toggle.setValue(this.plugin.settings.syncOnStart).onChange(async (v) => { this.plugin.settings.syncOnStart = v; await this.plugin.saveSettings(); }));
 
-        new Setting(containerEl)
-            .setName('Force Stop Backfill')
-            .setDesc('Immediately stop an ongoing backfill operation.')
-            .addButton(btn => btn.setButtonText('Stop').onClick(() => {
-                if (this.plugin.isBackfillActive) {
-                    this.plugin.isBackfillCancelled = true;
-                } else {
-                    new Notice("Backfill is not currently running.");
-                }
-            }));
+            new Setting(contentEl).setName('Sync Artists').addToggle(toggle => toggle.setValue(this.plugin.settings.syncArtists).onChange(async (v) => { this.plugin.settings.syncArtists = v; await this.plugin.saveSettings(); }));
+            new Setting(contentEl).setName('Sync Albums').addToggle(toggle => toggle.setValue(this.plugin.settings.syncAlbums).onChange(async (v) => { this.plugin.settings.syncAlbums = v; await this.plugin.saveSettings(); }));
+            
+            new Setting(contentEl)
+                .setName('Link Tracks in Artists (beta)')
+                .setDesc('Attempts to list tracks under it and link them')
+                .addToggle(toggle => toggle.setValue(this.plugin.settings.linkArtists).onChange(async (v) => { this.plugin.settings.linkArtists = v; await this.plugin.saveSettings(); }));
+            
+            new Setting(contentEl)
+                .setName('Link Tracks in Albums (beta)')
+                .setDesc('Attempts to list tracks under it and link them')
+                .addToggle(toggle => toggle.setValue(this.plugin.settings.linkAlbums).onChange(async (v) => { this.plugin.settings.linkAlbums = v; await this.plugin.saveSettings(); }));
+        } else if (this.activeTab === 'experimental') {
+            new Setting(contentEl).setName('Experimental').setHeading();
+
+            new Setting(contentEl)
+                .setName('Backfill History')
+                .setDesc('Fetch historical data based on limits below. Note: This feature is experimental')
+                .addButton(btn => btn.setButtonText('Start Backfill').onClick(() => {
+                    void this.plugin.syncLastFm(true, {
+                        tracks: parseInt(this.plugin.settings.bfTracks) || 0,
+                        albums: parseInt(this.plugin.settings.bfAlbums) || 0,
+                        artists: parseInt(this.plugin.settings.bfArtists) || 0
+                    });
+                }));
+
+            new Setting(contentEl).setName('Backfill Tracks Limit').addText(t => t.setValue(this.plugin.settings.bfTracks).onChange(async v => {this.plugin.settings.bfTracks = v; await this.plugin.saveSettings()}));
+            new Setting(contentEl).setName('Backfill Albums Limit').addText(t => t.setValue(this.plugin.settings.bfAlbums).onChange(async v => {this.plugin.settings.bfAlbums = v; await this.plugin.saveSettings()}));
+            
+            new Setting(contentEl).setName('Backfill Artists Limit').addText(t => t.setValue(this.plugin.settings.bfArtists).onChange(async v => {this.plugin.settings.bfArtists = v; await this.plugin.saveSettings()}));
+
+            new Setting(contentEl)
+                .setName('Force Stop Backfill')
+                .setDesc('Immediately stop an ongoing backfill operation.')
+                .addButton(btn => btn.setButtonText('Stop').onClick(() => {
+                    if (this.plugin.isBackfillActive) {
+                        this.plugin.isBackfillCancelled = true;
+                    } else {
+                        new Notice("Backfill is not currently running.");
+                    }
+                }));
+        }
     }
 }
