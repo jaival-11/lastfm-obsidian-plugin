@@ -23,7 +23,10 @@ jobs:
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
-          subject-path: 'main.js'
+          subject-path: |
+            main.js
+            styles.css
+            manifest.json
       - name: Upload compiled plugin
         uses: actions/upload-artifact@v4
         with:
