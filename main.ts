@@ -417,12 +417,13 @@ class LastFmSettingTab extends PluginSettingTab {
         if (this.activeTab === 'account') {
             new Setting(contentEl).setName('Account Configuration').setHeading();
 
-            const apiKeyDesc = document.createDocumentFragment();
-            apiKeyDesc.append('Click here to see ');
-            const apiKeyLink = document.createElement('a');
-            apiKeyLink.textContent = 'guide';
-            apiKeyLink.href = 'https://github.com/jaival-11/lastfm-obsidian-plugin#api-key-guide';
-            apiKeyDesc.appendChild(apiKeyLink);
+            const apiKeyDesc = createFragment((el) => {
+                el.appendText('Click here to see ');
+                el.createEl('a', {
+                    text: 'guide',
+                    href: 'https://github.com/jaival-11/lastfm-obsidian-plugin#api-key-guide',
+                });
+            });
 
             new Setting(contentEl)
                 .setName('Last.fm API Key')
