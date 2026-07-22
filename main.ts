@@ -478,9 +478,47 @@ lastfm_image: "${imageUrl}"
         const linkStr = linkEnabled ? `- [[${safeTitle}]]` : `- ${rawTrackName}`;
 
         if (file instanceof TFile) {
-            const content = await this.app.vault.read(file);
-            if (!content.includes(rawTrackName) && !content.includes(`[[${safeTitle}]]`)) {
-                await this.app.vault.append(file, `\n${linkStr}`);
+            let existingContent = await this.app.vault.read(file);
+            let modified = false;
+
+            if (!existingContent.includes(rawTrackName) && !existingContent.includes(`[[${safeTitle}]]`)) {
+                existingContent = existingContent + `\n${linkStr}`;
+                modified = true;
+            }
+
+            try {
+                const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&user=${this.settings.username}&api_key=${this.settings.apiKey}&artist=${encodeURIComponent(artistName)}&format=json&_=${Date.now()}`;
+                const infoRes = await requestUrl({ url: infoUrl });
+                const infoData = infoRes.json as LFMArtistInfo;
+                if (infoData.artist) {
+                    const playcountStr = infoData.artist.stats?.userplaycount || infoData.artist.stats?.playcount;
+                    if (playcountStr) {
+                        const playcount = parseInt(playcountStr, 10);
+                        if (!isNaN(playcount) && playcount > 0) {
+                            if (/lastfm_playcount:\s*"?\d+"?/.test(existingContent)) {
+                                const updated = existingContent.replace(/lastfm_playcount:\s*"?\d+"?/, `lastfm_playcount: ${playcount}`);
+                                if (updated !== existingContent) {
+                                    existingContent = updated;
+                                    modified = true;
+                                }
+                            }
+                            if (/\*\*Total Plays\*\*:\s*"?\d+"?/.test(existingContent)) {
+                                const updated = existingContent.replace(/\*\*Total Plays\*\*:\s*"?\d+"?/, `**Total Plays**: ${playcount}`);
+                                if (updated !== existingContent) {
+                                    existingContent = updated;
+                                    modified = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch {
+                // ignore secondary info failure
+            }
+
+            if (modified) {
+                await this.app.vault.modify(file, existingContent);
+                stats.artistsUpdated++;
             }
         } else {
             let playcount = 1;
@@ -532,9 +570,47 @@ ${linkStr}`;
         const linkStr = linkEnabled ? `- [[${safeTitle}]]` : `- ${rawTrackName}`;
 
         if (file instanceof TFile) {
-            const content = await this.app.vault.read(file);
-            if (!content.includes(rawTrackName) && !content.includes(`[[${safeTitle}]]`)) {
-                await this.app.vault.append(file, `\n${linkStr}`);
+            let existingContent = await this.app.vault.read(file);
+            let modified = false;
+
+            if (!existingContent.includes(rawTrackName) && !existingContent.includes(`[[${safeTitle}]]`)) {
+                existingContent = existingContent + `\n${linkStr}`;
+                modified = true;
+            }
+
+            try {
+                const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=album.getInfo&user=${this.settings.username}&api_key=${this.settings.apiKey}&artist=${encodeURIComponent(artistName)}&album=${encodeURIComponent(albumName)}&format=json&_=${Date.now()}`;
+                const infoRes = await requestUrl({ url: infoUrl });
+                const infoData = infoRes.json as LFMAlbumInfo;
+                if (infoData.album) {
+                    const playcountStr = infoData.album.userplaycount || infoData.album.playcount;
+                    if (playcountStr) {
+                        const playcount = parseInt(playcountStr, 10);
+                        if (!isNaN(playcount) && playcount > 0) {
+                            if (/lastfm_playcount:\s*"?\d+"?/.test(existingContent)) {
+                                const updated = existingContent.replace(/lastfm_playcount:\s*"?\d+"?/, `lastfm_playcount: ${playcount}`);
+                                if (updated !== existingContent) {
+                                    existingContent = updated;
+                                    modified = true;
+                                }
+                            }
+                            if (/\*\*Total Plays\*\*:\s*"?\d+"?/.test(existingContent)) {
+                                const updated = existingContent.replace(/\*\*Total Plays\*\*:\s*"?\d+"?/, `**Total Plays**: ${playcount}`);
+                                if (updated !== existingContent) {
+                                    existingContent = updated;
+                                    modified = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch {
+                // ignore secondary info failure
+            }
+
+            if (modified) {
+                await this.app.vault.modify(file, existingContent);
+                stats.albumsUpdated++;
             }
         } else {
             let playcount = 1;
