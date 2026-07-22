@@ -130,7 +130,32 @@ export default class LastFmPlugin extends Plugin {
                     if (!safeTitle) continue;
                     
                     const filePath = normalizePath(`${artistsDir}/${safeTitle}.md`);
-                    const content = `---
+                    const existingFile = this.app.vault.getAbstractFileByPath(filePath);
+
+                    if (existingFile instanceof TFile) {
+                        let existingContent = await this.app.vault.read(existingFile);
+                        let modified = false;
+
+                        if (/lastfm_playcount:\s*"?\d+"?/.test(existingContent)) {
+                            const updated = existingContent.replace(/lastfm_playcount:\s*"?\d+"?/, `lastfm_playcount: ${artist.playcount}`);
+                            if (updated !== existingContent) {
+                                existingContent = updated;
+                                modified = true;
+                            }
+                        }
+                        if (/\*\*Total Plays\*\*:\s*"?\d+"?/.test(existingContent)) {
+                            const updated = existingContent.replace(/\*\*Total Plays\*\*:\s*"?\d+"?/, `**Total Plays**: ${artist.playcount}`);
+                            if (updated !== existingContent) {
+                                existingContent = updated;
+                                modified = true;
+                            }
+                        }
+
+                        if (modified) {
+                            await this.app.vault.modify(existingFile, existingContent);
+                        }
+                    } else {
+                        const content = `---
 lastfm_type: "artist"
 lastfm_name: "${artist.name.replace(/"/g, "'")}"
 lastfm_playcount: ${artist.playcount}
@@ -142,7 +167,6 @@ lastfm_url: "${artist.url}"
 
 ## Tracks
 `;
-                    if (!await this.app.vault.adapter.exists(filePath)) {
                         await this.saveFile(filePath, content);
                         stats.artists++;
                     }
@@ -175,7 +199,48 @@ lastfm_url: "${artist.url}"
                     
                     const filePath = normalizePath(`${albumsDir}/${safeTitle}.md`);
                     const imageUrl = album.image && album.image[3] ? album.image[3]['#text'] : "";
-                    const content = `---
+                    const existingFile = this.app.vault.getAbstractFileByPath(filePath);
+
+                    if (existingFile instanceof TFile) {
+                        let existingContent = await this.app.vault.read(existingFile);
+                        let modified = false;
+
+                        if (/lastfm_playcount:\s*"?\d+"?/.test(existingContent)) {
+                            const updated = existingContent.replace(/lastfm_playcount:\s*"?\d+"?/, `lastfm_playcount: ${album.playcount}`);
+                            if (updated !== existingContent) {
+                                existingContent = updated;
+                                modified = true;
+                            }
+                        }
+                        if (/\*\*Total Plays\*\*:\s*"?\d+"?/.test(existingContent)) {
+                            const updated = existingContent.replace(/\*\*Total Plays\*\*:\s*"?\d+"?/, `**Total Plays**: ${album.playcount}`);
+                            if (updated !== existingContent) {
+                                existingContent = updated;
+                                modified = true;
+                            }
+                        }
+                        if (imageUrl) {
+                            if (/lastfm_image:\s*".*?"/.test(existingContent)) {
+                                const updated = existingContent.replace(/lastfm_image:\s*".*?"/, `lastfm_image: "${imageUrl}"`);
+                                if (updated !== existingContent) {
+                                    existingContent = updated;
+                                    modified = true;
+                                }
+                            }
+                            if (/!\[Cover Art\]\(.*?\)/.test(existingContent)) {
+                                const updated = existingContent.replace(/!\[Cover Art\]\(.*?\)/, `![Cover Art](${imageUrl})`);
+                                if (updated !== existingContent) {
+                                    existingContent = updated;
+                                    modified = true;
+                                }
+                            }
+                        }
+
+                        if (modified) {
+                            await this.app.vault.modify(existingFile, existingContent);
+                        }
+                    } else {
+                        const content = `---
 lastfm_type: "album"
 lastfm_name: "${album.name.replace(/"/g, "'")}"
 lastfm_artist: "${album.artist.name.replace(/"/g, "'")}"
@@ -191,7 +256,6 @@ lastfm_image: "${imageUrl}"
 
 ## Tracks
 `;
-                    if (!await this.app.vault.adapter.exists(filePath)) {
                         await this.saveFile(filePath, content);
                         stats.albums++;
                     }
