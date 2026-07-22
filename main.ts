@@ -219,7 +219,8 @@ lastfm_image: "${imageUrl}"
                 let latestSyncTime = this.settings.lastSync;
 
                 const trackData = tracksData.recenttracks?.track;
-                const tracks = trackData ? (Array.isArray(trackData) ? trackData : [trackData]) : [];
+                const rawTracks = trackData ? (Array.isArray(trackData) ? trackData : [trackData]) : [];
+                const tracks = [...rawTracks].reverse();
 
                 for (const track of tracks) {
                     if (isBackfill && this.isBackfillCancelled) {
@@ -258,6 +259,23 @@ lastfm_image: "${imageUrl}"
                     const lastScrobble = this.formatOffsetDate(trackUts, this.settings.tzOffset);
 
                     const filePath = normalizePath(`${tracksDir}/${safeTitle}.md`);
+                    
+                    let effectiveUts = trackUts;
+                    let effectiveLastScrobble = lastScrobble;
+
+                    const existingFile = this.app.vault.getAbstractFileByPath(filePath);
+                    if (existingFile instanceof TFile) {
+                        const existingContent = await this.app.vault.read(existingFile);
+                        const existingUtsMatch = existingContent.match(/lastfm_uts:\s*(\d+)/);
+                        if (existingUtsMatch) {
+                            const existingUts = parseInt(existingUtsMatch[1], 10);
+                            if (existingUts > effectiveUts) {
+                                effectiveUts = existingUts;
+                                effectiveLastScrobble = this.formatOffsetDate(existingUts, this.settings.tzOffset);
+                            }
+                        }
+                    }
+
                     const content = `---
 lastfm_type: "track"
 lastfm_name: "${track.name.replace(/"/g, "'")}"
@@ -265,8 +283,8 @@ lastfm_artist: "${artistName.replace(/"/g, "'")}"
 lastfm_album: "${albumName.replace(/"/g, "'")}"
 lastfm_playcount: ${playcount}
 lastfm_liked: ${isLiked}
-lastfm_uts: ${trackUts}
-lastfm_last_scrobble: "${lastScrobble}"
+lastfm_uts: ${effectiveUts}
+lastfm_last_scrobble: "${effectiveLastScrobble}"
 lastfm_url: "${track.url}"
 lastfm_image: "${imageUrl}"
 ---
@@ -275,7 +293,7 @@ lastfm_image: "${imageUrl}"
 **Album**: [[${albumName}]]
 **Total Plays**: ${playcount}
 **Liked**: ${isLiked ? "Yes" : "No"}
-**Last Scrobble**: ${lastScrobble}
+**Last Scrobble**: ${effectiveLastScrobble}
 
 ![Cover Art](${imageUrl})
 `;
