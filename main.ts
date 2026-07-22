@@ -86,7 +86,7 @@ export default class LastFmPlugin extends Plugin {
             this.isBackfillCancelled = false;
         }
         
-        const stats = { artists: 0, albums: 0, tracksAdded: 0, tracksUpdated: 0 };
+        const stats = { artistsAdded: 0, artistsUpdated: 0, albumsAdded: 0, albumsUpdated: 0, tracksAdded: 0, tracksUpdated: 0 };
         const baseDir = normalizePath(this.settings.folderName);
         const tracksDir = normalizePath(`${baseDir}/Tracks`);
         const artistsDir = normalizePath(`${baseDir}/Artists`);
@@ -121,7 +121,7 @@ export default class LastFmPlugin extends Plugin {
                 
                 for (const artist of artists) {
                     if (isBackfill && this.isBackfillCancelled) {
-                        new Notice(`Backfill stopped. Imported: ${stats.artists} artists, ${stats.albums} albums, ${stats.tracksAdded + stats.tracksUpdated} tracks.`);
+                        new Notice(this.formatSyncNotice("Backfill stopped.", stats));
                         this.isBackfillActive = false;
                         return;
                     }
@@ -153,6 +153,7 @@ export default class LastFmPlugin extends Plugin {
 
                         if (modified) {
                             await this.app.vault.modify(existingFile, existingContent);
+                            stats.artistsUpdated++;
                         }
                     } else {
                         const content = `---
@@ -168,7 +169,7 @@ lastfm_url: "${artist.url}"
 ## Tracks
 `;
                         await this.saveFile(filePath, content);
-                        stats.artists++;
+                        stats.artistsAdded++;
                     }
                 }
             } catch (e) {
@@ -189,7 +190,7 @@ lastfm_url: "${artist.url}"
 
                 for (const album of albums) {
                     if (isBackfill && this.isBackfillCancelled) {
-                        new Notice(`Backfill stopped. Imported: ${stats.artists} artists, ${stats.albums} albums, ${stats.tracksAdded + stats.tracksUpdated} tracks.`);
+                        new Notice(this.formatSyncNotice("Backfill stopped.", stats));
                         this.isBackfillActive = false;
                         return;
                     }
@@ -238,6 +239,7 @@ lastfm_url: "${artist.url}"
 
                         if (modified) {
                             await this.app.vault.modify(existingFile, existingContent);
+                            stats.albumsUpdated++;
                         }
                     } else {
                         const content = `---
@@ -257,7 +259,7 @@ lastfm_image: "${imageUrl}"
 ## Tracks
 `;
                         await this.saveFile(filePath, content);
-                        stats.albums++;
+                        stats.albumsAdded++;
                     }
                 }
             } catch (e) {
@@ -288,7 +290,7 @@ lastfm_image: "${imageUrl}"
 
                 for (const track of tracks) {
                     if (isBackfill && this.isBackfillCancelled) {
-                        new Notice(`Backfill stopped. Imported: ${stats.artists} artists, ${stats.albums} albums, ${stats.tracksAdded + stats.tracksUpdated} tracks.`);
+                        new Notice(this.formatSyncNotice("Backfill stopped.", stats));
                         this.isBackfillActive = false;
                         return;
                     }
@@ -388,9 +390,43 @@ lastfm_image: "${imageUrl}"
         this.isBackfillActive = false;
         
         if (isBackfill) {
-            new Notice(`Backfill Complete! Artists: ${stats.artists}, Albums: ${stats.albums}, Tracks: ${stats.tracksAdded + stats.tracksUpdated}`);
+            new Notice(this.formatSyncNotice("Backfill Complete!", stats));
         } else {
-            new Notice(`Sync Complete! Artists Added: ${stats.artists}, Albums Added: ${stats.albums}, Tracks Added: ${stats.tracksAdded}, Updated: ${stats.tracksUpdated}`);
+            new Notice(this.formatSyncNotice("Sync Complete!", stats));
+        }
+    }
+
+    formatSyncNotice(prefix: string, stats: { artistsAdded: number; artistsUpdated: number; albumsAdded: number; albumsUpdated: number; tracksAdded: number; tracksUpdated: number; }): string {
+        const addedParts: string[] = [];
+        if (stats.tracksAdded > 0) {
+            addedParts.push(`${stats.tracksAdded} ${stats.tracksAdded === 1 ? 'track' : 'tracks'}`);
+        }
+        if (stats.artistsAdded > 0) {
+            addedParts.push(`${stats.artistsAdded} ${stats.artistsAdded === 1 ? 'artist' : 'artists'}`);
+        }
+        if (stats.albumsAdded > 0) {
+            addedParts.push(`${stats.albumsAdded} ${stats.albumsAdded === 1 ? 'album' : 'albums'}`);
+        }
+
+        const updatedParts: string[] = [];
+        if (stats.tracksUpdated > 0) {
+            updatedParts.push(`${stats.tracksUpdated} ${stats.tracksUpdated === 1 ? 'track' : 'tracks'}`);
+        }
+        if (stats.artistsUpdated > 0) {
+            updatedParts.push(`${stats.artistsUpdated} ${stats.artistsUpdated === 1 ? 'artist' : 'artists'}`);
+        }
+        if (stats.albumsUpdated > 0) {
+            updatedParts.push(`${stats.albumsUpdated} ${stats.albumsUpdated === 1 ? 'album' : 'albums'}`);
+        }
+
+        if (addedParts.length > 0 && updatedParts.length > 0) {
+            return `${prefix} Added: ${addedParts.join(', ')}. Updated: ${updatedParts.join(', ')}.`;
+        } else if (addedParts.length > 0) {
+            return `${prefix} Added: ${addedParts.join(', ')}.`;
+        } else if (updatedParts.length > 0) {
+            return `${prefix} Updated: ${updatedParts.join(', ')}.`;
+        } else {
+            return `${prefix} No items added or updated.`;
         }
     }
 

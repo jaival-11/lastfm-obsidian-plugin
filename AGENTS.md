@@ -24,3 +24,6 @@ If you are tasked with updating the `README.md`, you must preserve its existing 
 *   Ensure the `Network Usage` and `License & Legal` (which includes specific AI and No Warranty disclaimers) sections remain intact to comply with Obsidian community guidelines.
 *   Always keep the footer: `<div align="center">\n\n---\n\nMade with ❤️ by Jaival\n\n</div>`
 
+## 5. Build & CI/CD Protocol (CRITICAL)
+*   **No Local Builds:** The plugin is built, compiled, and released entirely via GitHub Actions. **Do NOT run `npm run build` locally.**
+*   **No Compiled Commits:** Never attempt to generate, modify, or commit the compiled `main.js` file. Only edit the source `.ts` files and allow the cloud CI/CD pipeline to handle the compilation.

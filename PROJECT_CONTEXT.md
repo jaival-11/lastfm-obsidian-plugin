@@ -11,6 +11,7 @@ An Obsidian community plugin that seamlessly fetches a user's Last.fm scrobble h
 *   **Target:** Obsidian Plugin API (`minAppVersion`: 1.12.7)
 *   **Build Tool:** esbuild / Node.js
 *   **External API:** Last.fm API (`https://ws.audioscrobbler.com/2.0/`)
+*   **Build & Release:** Handled strictly via GitHub Actions. (No local building).
 
 ## Core Features
 1.  **Incremental Syncing:** Pulls only new tracks since the last sync timestamp to minimize API requests.
@@ -18,7 +19,7 @@ An Obsidian community plugin that seamlessly fetches a user's Last.fm scrobble h
 3.  **Data Extraction:** Creates dedicated folders and notes for Tracks, Artists, and Albums, complete with playcounts and cover image URLs.
 4.  **Smart Backlinking:** Automatically links scrobbled tracks directly into their respective Artist and Album notes.
 5.  **Timezone Adjustments:** Manually offsets UTC time (e.g., `5.5` for IST) and includes a "Re-stamp" feature to recalculate local timestamps for existing files without hitting the API.
-6.  **Live Stats:** Utilizes Obsidian `Notice` popups for detailed error handling and sync completion stats (e.g., "Artists Added: X, Albums Added: Y, Tracks Added: Z").
+6.  **Live Stats:** Utilizes Obsidian `Notice` popups for detailed error handling and dynamic sync completion stats (e.g., "Sync Complete! Added: 5 tracks, 2 artists. Updated: 3 tracks.").
 
 ## Architecture & API Constraints
 
