@@ -38,6 +38,8 @@ interface LFMArtist { name: string; playcount: number; url: string; image?: LFMI
 interface LFMAlbum { name: string; artist: { name: string }; playcount: number; url: string; image?: LFMImage[]; }
 interface LFMTrack { name: string; artist: { name?: string; '#text'?: string }; album: { '#text': string }; image?: LFMImage[]; date?: { uts: string }; loved?: string; url: string; '@attr'?: { nowplaying: string }; }
 interface LFMTrackInfo { track?: { userplaycount?: string; userloved?: string; }; }
+interface LFMAlbumInfo { album?: { name?: string; artist?: string; userplaycount?: string; playcount?: string; url?: string; image?: LFMImage[]; }; }
+interface LFMArtistInfo { artist?: { name?: string; stats?: { userplaycount?: string; playcount?: string; }; url?: string; }; }
 
 export default class LastFmPlugin extends Plugin {
     settings: LastFmSettings;
@@ -369,12 +371,10 @@ lastfm_image: "${imageUrl}"
                     stats.tracksUpdated += fileStats.updated;
 
                     if (this.settings.syncArtists) {
-                        const safeArtist = artistName.replace(/[^a-zA-Z0-9 -]/g, '').trim();
-                        await this.appendBacklink(artistsDir, safeArtist, track.name, this.settings.linkArtists, safeTitle);
+                        await this.ensureArtistBacklink(artistsDir, artistName, track.name, this.settings.linkArtists, safeTitle, stats);
                     }
                     if (this.settings.syncAlbums && albumName !== "Unknown") {
-                        const safeAlbum = albumName.replace(/[^a-zA-Z0-9 -]/g, '').trim();
-                        await this.appendBacklink(albumsDir, safeAlbum, track.name, this.settings.linkAlbums, safeTitle);
+                        await this.ensureAlbumBacklink(albumsDir, albumName, artistName, track.name, this.settings.linkAlbums, safeTitle, imageUrl, stats);
                     }
                 }
 
@@ -469,16 +469,118 @@ lastfm_image: "${imageUrl}"
         }
     }
 
-    async appendBacklink(folder: string, safeName: string, rawTrackName: string, linkEnabled: boolean, safeTitle: string) {
-        if (!safeName) return;
-        const filePath = normalizePath(`${folder}/${safeName}.md`);
+    async ensureArtistBacklink(artistsDir: string, artistName: string, rawTrackName: string, linkEnabled: boolean, safeTitle: string, stats: { artistsAdded: number; artistsUpdated: number }) {
+        const safeArtist = artistName.replace(/[^a-zA-Z0-9 -]/g, '').trim();
+        if (!safeArtist) return;
+
+        const filePath = normalizePath(`${artistsDir}/${safeArtist}.md`);
         const file = this.app.vault.getAbstractFileByPath(filePath);
+        const linkStr = linkEnabled ? `- [[${safeTitle}]]` : `- ${rawTrackName}`;
+
         if (file instanceof TFile) {
             const content = await this.app.vault.read(file);
-            if (!content.includes(rawTrackName)) {
-                const linkStr = linkEnabled ? `- [[${safeTitle}]]` : `- ${rawTrackName}`;
+            if (!content.includes(rawTrackName) && !content.includes(`[[${safeTitle}]]`)) {
                 await this.app.vault.append(file, `\n${linkStr}`);
             }
+        } else {
+            let playcount = 1;
+            let artistUrl = `https://www.last.fm/music/${encodeURIComponent(artistName)}`;
+
+            try {
+                const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&user=${this.settings.username}&api_key=${this.settings.apiKey}&artist=${encodeURIComponent(artistName)}&format=json&_=${Date.now()}`;
+                const infoRes = await requestUrl({ url: infoUrl });
+                const infoData = infoRes.json as LFMArtistInfo;
+                if (infoData.artist) {
+                    if (infoData.artist.stats?.userplaycount) {
+                        playcount = parseInt(infoData.artist.stats.userplaycount, 10) || 1;
+                    } else if (infoData.artist.stats?.playcount) {
+                        playcount = parseInt(infoData.artist.stats.playcount, 10) || 1;
+                    }
+                    if (infoData.artist.url) {
+                        artistUrl = infoData.artist.url;
+                    }
+                }
+            } catch {
+                // ignore secondary info failure
+            }
+
+            const content = `---
+lastfm_type: "artist"
+lastfm_name: "${artistName.replace(/"/g, "'")}"
+lastfm_playcount: ${playcount}
+lastfm_url: "${artistUrl}"
+---
+# ${artistName}
+**Total Plays**: ${playcount}
+[View on Last.fm](${artistUrl})
+
+## Tracks
+${linkStr}`;
+
+            await this.saveFile(filePath, content);
+            stats.artistsAdded++;
+        }
+    }
+
+    async ensureAlbumBacklink(albumsDir: string, albumName: string, artistName: string, rawTrackName: string, linkEnabled: boolean, safeTitle: string, trackImageUrl: string, stats: { albumsAdded: number; albumsUpdated: number }) {
+        if (!albumName || albumName === "Unknown") return;
+        const safeAlbum = albumName.replace(/[^a-zA-Z0-9 -]/g, '').trim();
+        if (!safeAlbum) return;
+
+        const filePath = normalizePath(`${albumsDir}/${safeAlbum}.md`);
+        const file = this.app.vault.getAbstractFileByPath(filePath);
+        const linkStr = linkEnabled ? `- [[${safeTitle}]]` : `- ${rawTrackName}`;
+
+        if (file instanceof TFile) {
+            const content = await this.app.vault.read(file);
+            if (!content.includes(rawTrackName) && !content.includes(`[[${safeTitle}]]`)) {
+                await this.app.vault.append(file, `\n${linkStr}`);
+            }
+        } else {
+            let playcount = 1;
+            let albumUrl = `https://www.last.fm/music/${encodeURIComponent(artistName)}/${encodeURIComponent(albumName)}`;
+            let imageUrl = trackImageUrl;
+
+            try {
+                const infoUrl = `https://ws.audioscrobbler.com/2.0/?method=album.getInfo&user=${this.settings.username}&api_key=${this.settings.apiKey}&artist=${encodeURIComponent(artistName)}&album=${encodeURIComponent(albumName)}&format=json&_=${Date.now()}`;
+                const infoRes = await requestUrl({ url: infoUrl });
+                const infoData = infoRes.json as LFMAlbumInfo;
+                if (infoData.album) {
+                    if (infoData.album.userplaycount) {
+                        playcount = parseInt(infoData.album.userplaycount, 10) || 1;
+                    } else if (infoData.album.playcount) {
+                        playcount = parseInt(infoData.album.playcount, 10) || 1;
+                    }
+                    if (infoData.album.url) {
+                        albumUrl = infoData.album.url;
+                    }
+                    if (infoData.album.image && infoData.album.image[3] && infoData.album.image[3]['#text']) {
+                        imageUrl = infoData.album.image[3]['#text'];
+                    }
+                }
+            } catch {
+                // ignore secondary info failure
+            }
+
+            const content = `---
+lastfm_type: "album"
+lastfm_name: "${albumName.replace(/"/g, "'")}"
+lastfm_artist: "${artistName.replace(/"/g, "'")}"
+lastfm_playcount: ${playcount}
+lastfm_url: "${albumUrl}"
+lastfm_image: "${imageUrl}"
+---
+# ${albumName}
+**Artist**: ${artistName}
+**Total Plays**: ${playcount}
+
+![Cover Art](${imageUrl})
+
+## Tracks
+${linkStr}`;
+
+            await this.saveFile(filePath, content);
+            stats.albumsAdded++;
         }
     }
 
