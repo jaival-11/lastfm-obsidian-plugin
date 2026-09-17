@@ -1,6 +1,6 @@
 # Sync Last.fm for Obsidian
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/jaival-11/lastfm-obsidian-plugin?style=flat-square&color=c3000d)
+[![Latest release](https://img.shields.io/github/v/release/jaival-11/lastfm-obsidian-plugin?style=flat-square&labelColor=0d1117&color=c3000d)](https://github.com/jaival-11/lastfm-obsidian-plugin/releases/latest) [![Telegram Channel](https://img.shields.io/badge/Telegram-Join-0088cc?style=flat-square&logo=telegram&labelColor=0d1117)](https://t.me/theironiccircle) [![Follow on X](https://img.shields.io/badge/techironic11-000000?style=flat-square&logo=x&labelColor=0d1117)](https://x.com/techironic11) [![Email Support](https://img.shields.io/badge/Email-Contact_Me-db4437?style=flat-square&logo=gmail&labelColor=0d1117)](mailto:jaival7909@gmail.com)
 
 Seamlessly fetch scrobbles, artists, albums and cover art from Last.fm and auto creates notes with properties which can be directly used in Base.
 
@@ -62,11 +62,11 @@ This plugin requires an active internet connection to function. It makes outboun
  
   1. Open Obsidian and go to **Settings** > **Community Plugins**.
   2. Turn off "Safe Mode" if you haven't already.
-  3. Click **Browse** and search for **Last.fm Sync**.
+  3. Click **Browse** and search for **Sync Lastm.fm**.
   4. Click **Install**, then click **Enable**.
  
   Alternatively, click here to open it directly in Obsidian: 
-  [Install Last.fm Sync](https://community.obsidian.md/plugins/sync-lastfm)
+  [Install Sync Lastm.fm](https://community.obsidian.md/plugins/sync-lastfm)
 </details>
 
 <details>
@@ -83,7 +83,7 @@ This plugin requires an active internet connection to function. It makes outboun
 6. Create a new folder inside `plugins` named `sync-last.fm`.
 7. Move the downloaded `main.js`, `styles.css` and `manifest.json` files into this new `sync-last.fm` folder.
 8. Restart Obsidian, go to **Settings** > **Community Plugins**, and turn off "Safe Mode".
-9. Toggle on **Last.fm Sync** in the plugin list.
+9. Toggle on **Sync Lastm.fm** in the plugin list.
 </details>
 
 <details>
@@ -116,7 +116,7 @@ To sync your data, you will need a free API key from Last.fm:
 
 ## Feedback & Issues
 
-If you run into any bugs, have a feature suggestion, or just want to help improve the plugin, feel free to open an issue! 
+If you run into any bugs, have a feature suggestion, or just want to help improve the plugin, feel free to open an issue or contact me directly using details given at the top!
 
 [Open an Issue](https://github.com/jaival-11/lastfm-obsidian-plugin/issues)
 
