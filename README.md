@@ -139,3 +139,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Made with ❤️ by Jaival**
 
 </div>
+
+[![GitGem](https://gitgem.org/api/badge/github/jaival-11/lastfm-obsidian-plugin.svg)](https://gitgem.org/github/jaival-11/lastfm-obsidian-plugin)
