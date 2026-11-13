@@ -80,7 +80,7 @@ export default class LastFmPlugin extends Plugin {
     sanitizeFileName(name: string): string {
         if (!name) return '';
         return name
-            .replace(/[\\/:*?"<>|#^[\]\x00-\x1f\x7f]/g, '')
+            .replace(/[\\/:*?"<>|#^[\]]/g, '')
             .replace(/^\.+/, '')
             .trim();
     }
