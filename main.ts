@@ -77,6 +77,14 @@ export default class LastFmPlugin extends Plugin {
         return date.toISOString().replace('T', ' ').substring(0, 16);
     }
 
+    sanitizeFileName(name: string): string {
+        if (!name) return '';
+        return name
+            .replace(/[\\/:*?"<>|#^[\]\x00-\x1f\x7f]/g, '')
+            .replace(/^\.+/, '')
+            .trim();
+    }
+
     async syncLastFm(isBackfill: boolean, limits = { tracks: 50, albums: 50, artists: 50 }) {
         if (!this.settings.apiKey || !this.settings.username) {
             new Notice("Last.fm: Please configure API Key and Username.");
@@ -128,7 +136,7 @@ export default class LastFmPlugin extends Plugin {
                         return;
                     }
 
-                    const safeTitle = artist.name.replace(/[^a-zA-Z0-9 -]/g, '').trim();
+                    const safeTitle = this.sanitizeFileName(artist.name);
                     if (!safeTitle) continue;
                     
                     const filePath = normalizePath(`${artistsDir}/${safeTitle}.md`);
@@ -197,7 +205,7 @@ lastfm_url: "${artist.url}"
                         return;
                     }
 
-                    const safeTitle = album.name.replace(/[^a-zA-Z0-9 -]/g, '').trim();
+                    const safeTitle = this.sanitizeFileName(album.name);
                     if (!safeTitle) continue;
                     
                     const filePath = normalizePath(`${albumsDir}/${safeTitle}.md`);
@@ -302,7 +310,7 @@ lastfm_image: "${imageUrl}"
                     const trackUts = track.date?.uts ? parseInt(track.date.uts, 10) : 0;
                     if (trackUts > latestSyncTime) latestSyncTime = trackUts;
 
-                    const safeTitle = track.name.replace(/[^a-zA-Z0-9 -]/g, '').trim();
+                    const safeTitle = this.sanitizeFileName(track.name);
                     if (!safeTitle) continue;
                     
                     const artistName = track.artist.name || track.artist['#text'] || "Unknown";
@@ -344,6 +352,9 @@ lastfm_image: "${imageUrl}"
                         }
                     }
 
+                    const safeArtist = this.sanitizeFileName(artistName);
+                    const safeAlbum = this.sanitizeFileName(albumName);
+
                     const content = `---
 lastfm_type: "track"
 lastfm_name: "${track.name.replace(/"/g, "'")}"
@@ -357,8 +368,8 @@ lastfm_url: "${track.url}"
 lastfm_image: "${imageUrl}"
 ---
 # ${track.name}
-**Artist**: [[${artistName}]]
-**Album**: [[${albumName}]]
+**Artist**: [[${safeArtist || artistName}]]
+**Album**: [[${safeAlbum || albumName}]]
 **Total Plays**: ${playcount}
 **Liked**: ${isLiked ? "Yes" : "No"}
 **Last Scrobble**: ${effectiveLastScrobble}
@@ -470,7 +481,7 @@ lastfm_image: "${imageUrl}"
     }
 
     async ensureArtistBacklink(artistsDir: string, artistName: string, rawTrackName: string, linkEnabled: boolean, safeTitle: string, stats: { artistsAdded: number; artistsUpdated: number }) {
-        const safeArtist = artistName.replace(/[^a-zA-Z0-9 -]/g, '').trim();
+        const safeArtist = this.sanitizeFileName(artistName);
         if (!safeArtist) return;
 
         const filePath = normalizePath(`${artistsDir}/${safeArtist}.md`);
@@ -562,7 +573,7 @@ ${linkStr}`;
 
     async ensureAlbumBacklink(albumsDir: string, albumName: string, artistName: string, rawTrackName: string, linkEnabled: boolean, safeTitle: string, trackImageUrl: string, stats: { albumsAdded: number; albumsUpdated: number }) {
         if (!albumName || albumName === "Unknown") return;
-        const safeAlbum = albumName.replace(/[^a-zA-Z0-9 -]/g, '').trim();
+        const safeAlbum = this.sanitizeFileName(albumName);
         if (!safeAlbum) return;
 
         const filePath = normalizePath(`${albumsDir}/${safeAlbum}.md`);
